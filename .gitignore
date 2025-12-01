@@ -201,6 +201,12 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+# Benchmark artifacts
+data/
+*.parquet
+*.lance
+*.vortex
+
 # Marimo
 marimo/_static/
 marimo/_lsp/

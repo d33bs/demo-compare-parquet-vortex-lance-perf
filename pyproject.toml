@@ -1,0 +1,33 @@
+[project]
+name = "demo-compare-parquet-vortex-lance-perf"
+version = "0.1.0"
+description = "Benchmarks comparing Parquet, Vortex, and Lance on a wide synthetic dataset."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy>=1.26.4",
+  "pandas>=2.2.0",
+  "pyarrow>=15.0.0",
+  "jupyterlab>=4.2.5",
+  "vortex-data>=0.56.0",
+  "poethepoet>=0.38.0",
+  "lancedb>=0.25.3",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+package = false
+
+[tool.poe.tasks.setup]
+shell = "uv venv && uv sync"
+
+[tool.poe.tasks.lab]
+shell = "uv venv && uv sync && uv run jupyter lab"
+
+[dependency-groups]
+dev = [
+    "poethepoet>=0.38.0",
+]
