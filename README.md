@@ -17,8 +17,16 @@ uv sync
 uv run jupyter lab
 ```
 
-The notebook defaults to ~100,000 rows x ~3,000 columns of `float32` data (~1.2 GB in-memory). Lower `N_ROWS`/`N_COLS` in the config cell if you hit memory pressure.
+The notebook defaults to ~100,000 rows x ~3,000 columns of `float32` data (~1.2 GB in-memory). Lower `N_ROWS`/`N_COLS` in the config cell if you hit memory pressure (especially before converting to pandas for the CSV benchmark).
 
 ## Notes on Vortex
 
 The notebook uses `vortex.io.write` to persist data and `vortex.open(...).to_arrow().read_all()` to read.
+
+## Included formats
+
+- Parquet (pyarrow, zstd)
+- Lance (lancedb)
+- Vortex
+- CSV (pandas, gzip)
+- DuckDB table
