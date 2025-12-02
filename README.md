@@ -21,4 +21,4 @@ The notebook defaults to ~100,000 rows x ~3,000 columns of `float32` data (~1.2 
 
 ## Notes on Vortex
 
-The notebook expects a Vortex writer (e.g., `vortex.write_dataset` or `vortex.VortexFile.write`). If your installed `vortex-data` does not expose a write API, upgrade to a version that does or swap in the appropriate writer in the format-config cell.
+The notebook uses `vortex.io.write` to persist data and `vortex.open(...).to_arrow().read_all()` to read.
