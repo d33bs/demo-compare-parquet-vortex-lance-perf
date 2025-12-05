@@ -13,6 +13,7 @@ dependencies = [
   "poethepoet>=0.38.0",
   "lancedb>=0.25.3",
   "duckdb>=1.1.3",
+  "jupytext>=1.18.1",
 ]
 
 [build-system]
@@ -32,3 +33,6 @@ shell = "uv venv && uv sync && uv run jupyter lab"
 dev = [
     "poethepoet>=0.38.0",
 ]
+
+[tool.jupytext]
+formats = "ipynb,py:light"
