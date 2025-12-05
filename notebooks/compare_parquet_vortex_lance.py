@@ -34,6 +34,7 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pyarrow.dataset as ds
 import lancedb
 import duckdb
 import vortex
@@ -52,6 +53,8 @@ N_COLS = 4_000  # float columns
 STR_COLS = 50
 DTYPE = np.float64
 REPEATS = 5
+RANDOM_READ_REPEATS = REPEATS
+RANDOM_ROW_COUNT = 10
 SEED = 13
 
 RUN_DUCKDB = True
@@ -99,6 +102,8 @@ N_ROWS, N_COLS, STR_COLS, DTYPE
 
 # +
 rng = np.random.default_rng(SEED)
+# Add an explicit row id column so we can filter for random access reads later.
+row_ids = pa.array(np.arange(N_ROWS, dtype=np.int64))
 float_names = [f"col_{i:04d}" for i in range(N_COLS)]
 float_columns = [pa.array(rng.standard_normal(N_ROWS, dtype=DTYPE)) for _ in range(N_COLS)]
 
@@ -110,13 +115,15 @@ for _ in range(STR_COLS):
     str_columns.append(pa.array(strings))
 
 column_names = float_names + str_names
-columns = float_columns + str_columns
+columns = [row_ids] + float_columns + str_columns
+column_names = ['row_id'] + column_names
 table = pa.Table.from_arrays(columns, names=column_names)
 print('table rows:', table.num_rows, 'cols:', table.num_columns)
 
 # -
 
 duck_table = table
+RANDOM_INDICES = sorted(rng.choice(table.num_rows, size=RANDOM_ROW_COUNT, replace=False).tolist())
 
 
 # +
@@ -139,8 +146,10 @@ def run_benchmarks(table: pa.Table, configs, repeats: int = 3):
     results = []
     for cfg in configs:
         cfg_repeats = cfg.get('repeats', repeats)
+        cfg_random_repeats = cfg.get('random_repeats', cfg_repeats)
         write_times = []
         read_times = []
+        random_read_times = []
         print(f"[format start] {cfg['name']}", flush=True)
         for run_idx in range(cfg_repeats):
             if cfg.get('cleanup', True):
@@ -162,10 +171,24 @@ def run_benchmarks(table: pa.Table, configs, repeats: int = 3):
             read_times.append(elapsed)
             print(f"[read ] {cfg['name']} run {run_idx + 1}/{cfg_repeats}: {elapsed:.2f}s", flush=True)
 
+        for run_idx in range(cfg_random_repeats):
+            gc.collect()
+            t0 = time.perf_counter()
+            random_fn = cfg.get('random_read')
+            if random_fn is None:
+                tbl = cfg['read'](cfg['path'])
+                _ = tbl.take(RANDOM_INDICES)
+            else:
+                _ = random_fn(cfg['path'], indices=RANDOM_INDICES)
+            elapsed = time.perf_counter() - t0
+            random_read_times.append(elapsed)
+            print(f"[rnd  ] {cfg['name']} run {run_idx + 1}/{cfg_random_repeats}: {elapsed:.2f}s", flush=True)
+
         results.append({
             'format': cfg['name'],
             'write_seconds': write_times,
             'read_seconds': read_times,
+            'random_read_seconds': random_read_times,
             'size_mb': size_bytes / (1024 * 1024),
         })
         print(f"[format end] {cfg['name']}", flush=True)
@@ -238,18 +261,77 @@ def parquet_duck_read(path=PARQUET_DUCK_PATH):
         return con.execute(f"SELECT * FROM read_parquet('{path}')").fetch_arrow_table()
 
 
+def parquet_random_read(path=PARQUET_PATH, indices=None):
+    try:
+        dataset = ds.dataset(path, format="parquet")
+        filt = ds.field('row_id').isin(pa.array(indices, type=pa.int64()))
+        return dataset.to_table(filter=filt)
+    except Exception:
+        return pq.read_table(path).take(indices)
+
+
+def parquet_duck_random_read(path=PARQUET_DUCK_PATH, indices=None):
+    idx_list = ",".join(str(int(i)) for i in indices)
+    with duckdb.connect() as con:
+        return con.execute(f"SELECT * FROM read_parquet('{path}') WHERE row_id IN ({idx_list})").fetch_arrow_table()
+
+
+def lance_random_read(path=LANCE_PATH, table_name=LANCE_TABLE, indices=None):
+    idx_list = ",".join(str(int(i)) for i in indices)
+    table = LANCE_DB.open_table(table_name)
+    try:
+        return table.query().where(f"row_id IN ({idx_list})").to_arrow()
+    except Exception:
+        return table.to_arrow().take(indices)
+
+
+def vortex_random_read(path=VORTEX_PATH, indices=None):
+    reader = vortex.open(str(path)).to_arrow()
+    target = sorted(int(i) for i in indices)
+    collected = None
+    offset = 0
+    for batch in reader:
+        batch_len = batch.num_rows
+        batch_matches = [idx - offset for idx in target if offset <= idx < offset + batch_len]
+        if not batch_matches:
+            offset += batch_len
+            continue
+        if collected is None:
+            collected = {name: [] for name in batch.schema.names}
+        for name, column in zip(batch.schema.names, batch.columns):
+            for rel_idx in batch_matches:
+                collected[name].append(column[rel_idx].as_py())
+        offset += batch_len
+        if len(next(iter(collected.values()))) >= len(target):
+            break
+    if not collected:
+        return pa.Table.from_arrays([], names=[])
+    arrays = [pa.array(collected[name]) for name in collected.keys()]
+    return pa.Table.from_arrays(arrays, names=list(collected.keys()))
+
+
+def duck_random_read(path=DUCK_PATH, table_name=DUCK_TABLE, indices=None):
+    idx_list = ",".join(str(int(i)) for i in indices)
+    with duckdb.connect(str(path)) as con:
+        return con.execute(f"SELECT * FROM {table_name} WHERE row_id IN ({idx_list})").fetch_arrow_table()
+
+
 format_configs = [
     {
         'name': 'Parquet (pyarrow, zstd)',
         'path': PARQUET_PATH,
         'write': lambda tbl, path=PARQUET_PATH: pq.write_table(tbl, path, compression='zstd'),
         'read': lambda path=PARQUET_PATH: pq.read_table(path),
+        'random_read': parquet_random_read,
+        'random_repeats': RANDOM_READ_REPEATS,
     },
     {
         'name': 'Parquet (duckdb, zstd)',
         'path': PARQUET_DUCK_PATH,
         'write': parquet_duck_write,
         'read': parquet_duck_read,
+        'random_read': parquet_duck_random_read,
+        'random_repeats': RANDOM_READ_REPEATS,
     },
     {
         'name': 'Lance (lancedb)',
@@ -257,12 +339,16 @@ format_configs = [
         'write': lance_write,
         'read': lance_read,
         'cleanup': False,
+        'random_read': lance_random_read,
+        'random_repeats': RANDOM_READ_REPEATS,
     },
     {
         'name': 'Vortex',
         'path': VORTEX_PATH,
         'write': vortex_write,
         'read': vortex_read,
+        'random_read': vortex_random_read,
+        'random_repeats': RANDOM_READ_REPEATS,
     },
     {
         'name': 'DuckDB (file table)',
@@ -271,6 +357,8 @@ format_configs = [
         'read': duck_read,
         'table': duck_table,
         'repeats': DUCK_REPEATS,
+        'random_read': duck_random_read,
+        'random_repeats': RANDOM_READ_REPEATS,
     },
 ]
 
@@ -283,8 +371,10 @@ results_df = pd.DataFrame({
     'format': [r['format'] for r in results],
     'write_avg_s': [np.mean(r['write_seconds']) for r in results],
     'write_std_s': [np.std(r['write_seconds']) for r in results],
-    'read_avg_s': [np.mean(r['read_seconds']) for r in results],
-    'read_std_s': [np.std(r['read_seconds']) for r in results],
+    'read_all_avg_s': [np.mean(r['read_seconds']) for r in results],
+    'read_all_std_s': [np.std(r['read_seconds']) for r in results],
+    'read_random_avg_s': [np.mean(r['random_read_seconds']) for r in results],
+    'read_random_std_s': [np.std(r['random_read_seconds']) for r in results],
     'size_mb': [r['size_mb'] for r in results],
     'version': [FORMAT_VERSIONS.get(r['format'], '') for r in results],
 })
@@ -298,6 +388,7 @@ for r in results:
         timings.append({'format': r['format'], 'kind': 'write', 'run': idx, 'seconds': t})
     for idx, t in enumerate(r['read_seconds']):
         timings.append({'format': r['format'], 'kind': 'read', 'run': idx, 'seconds': t})
+    for idx, t in enumerate(r['random_read_seconds']):
+        timings.append({'format': r['format'], 'kind': 'random_read', 'run': idx, 'seconds': t})
 
 pd.DataFrame(timings)
-
