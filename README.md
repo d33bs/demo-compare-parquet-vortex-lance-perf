@@ -21,6 +21,8 @@ The notebook defaults to ~100,000 rows x ~4,000 columns of `float64` data and ~5
 
 An OME-Arrow variant lives at `notebooks/compare_parquet_vortex_lance_ome.ipynb` (or `.py` via jupytext) which adds a single OME image column (random 100x100) alongside the existing columns.
 
+An OME-Arrow-only + OME-Zarr benchmark lives at `notebooks/compare_ome_arrow_only.ipynb` (or `.py`), focusing on a single OME image column and a directory-per-image OME-Zarr comparison.
+
 ## Notes on Vortex
 
 The notebook uses `vortex.io.write` to persist data and `vortex.open(...).to_arrow().read_all()` to read.
