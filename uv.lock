@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -778,12 +778,15 @@ dependencies = [
     { name = "jupyterlab" },
     { name = "jupytext" },
     { name = "lancedb" },
+    { name = "numcodecs" },
     { name = "numpy" },
     { name = "ome-arrow" },
+    { name = "ome-zarr" },
     { name = "pandas" },
     { name = "poethepoet" },
     { name = "pyarrow" },
     { name = "vortex-data" },
+    { name = "zarr" },
 ]
 
 [package.dev-dependencies]
@@ -797,12 +800,15 @@ requires-dist = [
     { name = "jupyterlab", specifier = ">=4.2.5" },
     { name = "jupytext", specifier = ">=1.18.1" },
     { name = "lancedb", specifier = ">=0.25.3" },
+    { name = "numcodecs", specifier = ">=0.16.5" },
     { name = "numpy", specifier = ">=1.26.4" },
     { name = "ome-arrow", specifier = ">=0.0.4" },
+    { name = "ome-zarr", specifier = ">=0.12.2" },
     { name = "pandas", specifier = ">=2.2.0" },
     { name = "poethepoet", specifier = ">=0.38.0" },
     { name = "pyarrow", specifier = ">=15.0.0" },
     { name = "vortex-data", specifier = ">=0.56.0" },
+    { name = "zarr", specifier = ">=3.1.5" },
 ]
 
 [package.metadata.requires-dev]
@@ -1128,6 +1134,9 @@ wheels = [
 [package.optional-dependencies]
 http = [
     { name = "aiohttp" },
+]
+s3 = [
+    { name = "s3fs" },
 ]
 
 [[package]]
@@ -2475,6 +2484,25 @@ lxml = [
 ]
 pint = [
     { name = "pint" },
+]
+
+[[package]]
+name = "ome-zarr"
+version = "0.12.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "dask" },
+    { name = "fsspec", extra = ["s3"] },
+    { name = "numpy" },
+    { name = "requests" },
+    { name = "scikit-image" },
+    { name = "toolz" },
+    { name = "zarr" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a4/44/647843d872aa136609e805c06e9f9b2cdcb6e2a58ec485322311dec7b64d/ome_zarr-0.12.2.tar.gz", hash = "sha256:834e801e9aa4b870bed3dde2dc2a3ad7f388f1a13ffa6b3d7aade90691b9de64", size = 69891, upload-time = "2025-08-22T08:57:13.64Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4f/21/59baa90924b815b70f88045f0b206b7eab0b68b461c0192692486b516ab7/ome_zarr-0.12.2-py3-none-any.whl", hash = "sha256:655fe1b11ca01148603f9931a5b0af31207dfc03a3a35f9b0ab8639790282bbd", size = 41410, upload-time = "2025-08-22T08:57:12.44Z" },
 ]
 
 [[package]]

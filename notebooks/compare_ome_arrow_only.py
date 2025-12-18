@@ -29,6 +29,9 @@ import gc
 import shutil
 import time
 from pathlib import Path
+import bioio_ome_zarr
+import zarr
+import numcodecs
 
 import numpy as np
 import pandas as pd
@@ -97,6 +100,7 @@ VERSIONS = {
     'duckdb': duckdb.__version__,
     'vortex': vortex_version,
     'ome-arrow': getattr(__import__('ome_arrow'), '__version__', 'unknown'),
+    'ome-zarr': _pkg_version('ome-zarr'),
     'bioio_ome_zarr': _pkg_version('bioio-ome-zarr'),
     'zarr': _pkg_version('zarr'),
     'numcodecs': _pkg_version('numcodecs'),
@@ -118,8 +122,10 @@ row_ids = pa.array(np.arange(N_ROWS, dtype=np.int64))
 # Build the OME-Arrow column with random images.
 # OMEArrow defaults to dim_order="TCZYX", so we supply a 5D array with singleton T,C,Z.
 ome_pylist = []
+ome_arrays = []
 for _ in range(N_ROWS):
     img = rng.integers(0, 256, size=(1, 1, 1, *OME_SHAPE), dtype=OME_DTYPE)
+    ome_arrays.append(img)
     ome_scalar = OMEArrow(data=img).data.as_py()
     ome_scalar.pop('masks', None)  # drop Null field to avoid Arrow null append issue
     ome_pylist.append(ome_scalar)
@@ -201,6 +207,7 @@ def run_benchmarks(table: pa.Table, configs, repeats: int = 3):
             'read_seconds': read_times,
             'random_read_seconds': random_read_times,
             'size_mb': size_bytes / (1024 * 1024),
+            'version': cfg.get('version', FORMAT_VERSIONS.get(cfg['name'], '')),
         })
         print(f"[format end] {cfg['name']}", flush=True)
     return results
@@ -326,48 +333,61 @@ def duck_random_read(path=DUCK_PATH, table_name=DUCK_TABLE, indices=None):
     with duckdb.connect(str(path)) as con:
         return con.execute(f"SELECT * FROM {table_name} WHERE row_id IN ({idx_list})").fetch_arrow_table()
 
-
-# OME-Zarr helpers (dir-per-image)
-def ome_zarr_deps_available() -> bool:
+# OME-Zarr (native) helpers — dir-per-image layout
+def ome_zarr_native_available() -> bool:
     try:
-        import bioio_ome_zarr  # noqa: F401
+        import ome_zarr  # noqa: F401
         import zarr  # noqa: F401
         import numcodecs  # noqa: F401
+        from ome_zarr.io import parse_url  # noqa: F401
+        from ome_zarr.writer import write_image  # noqa: F401
+        from ome_zarr.reader import Reader  # noqa: F401
         return True
     except Exception:
         return False
 
 
-def ome_zarr_write_all(records, base_path=OME_ZARR_DIR):
-    if not ome_zarr_deps_available():
-        raise RuntimeError("OME-Zarr deps missing: install bioio-ome-zarr zarr numcodecs")
+def ome_zarr_write_all_native(arrays, base_path=OME_ZARR_DIR):
+    if not ome_zarr_native_available():
+        raise RuntimeError("OME-Zarr native deps missing: install ome-zarr zarr numcodecs")
     drop_path(base_path)
     base_path.mkdir(parents=True, exist_ok=True)
-    from ome_arrow import to_ome_zarr
-    for idx, rec in enumerate(records):
+    from ome_zarr.io import parse_url
+    from ome_zarr.writer import write_image
+    import zarr
+
+    for idx, arr in enumerate(arrays):
         out_dir = base_path / f"img_{idx:05d}.zarr"
-        to_ome_zarr(rec, str(out_dir))
+        store = parse_url(str(out_dir), mode="w").store
+        root = zarr.group(store=store)
+        write_image(arr, root, axes="tczyx")
 
 
-def ome_zarr_read_all(base_path=OME_ZARR_DIR):
-    if not ome_zarr_deps_available():
-        raise RuntimeError("OME-Zarr deps missing: install bioio-ome-zarr zarr numcodecs")
-    from ome_arrow import from_ome_zarr
+def ome_zarr_read_all_native(base_path=OME_ZARR_DIR):
+    if not ome_zarr_native_available():
+        raise RuntimeError("OME-Zarr native deps missing: install ome-zarr zarr numcodecs")
+    import zarr
+
     out = []
     for zarr_dir in sorted(base_path.glob("*.zarr")):
-        out.append(from_ome_zarr(str(zarr_dir)))
+        grp = zarr.open_group(str(zarr_dir), mode="r")
+        if "0" in grp:
+            out.append(grp["0"][...])
     return out
 
 
-def ome_zarr_random_read(indices, base_path=OME_ZARR_DIR):
-    if not ome_zarr_deps_available():
-        raise RuntimeError("OME-Zarr deps missing: install bioio-ome-zarr zarr numcodecs")
-    from ome_arrow import from_ome_zarr
+def ome_zarr_random_read_native(indices, base_path=OME_ZARR_DIR):
+    if not ome_zarr_native_available():
+        raise RuntimeError("OME-Zarr native deps missing: install ome-zarr zarr numcodecs")
+    import zarr
+
     paths = sorted(base_path.glob("*.zarr"))
     out = []
     for idx in indices:
         if 0 <= idx < len(paths):
-            out.append(from_ome_zarr(str(paths[idx])))
+            grp = zarr.open_group(str(paths[idx]), mode="r")
+            if "0" in grp:
+                out.append(grp["0"][...])
     return out
 
 
@@ -417,24 +437,23 @@ format_configs = [
     },
 ]
 
-if ome_zarr_deps_available():
+if ome_zarr_native_available():
     format_configs.append({
         'name': 'OME-Zarr (dir-per-image)',
         'path': OME_ZARR_DIR,
-        'write': lambda records, path=OME_ZARR_DIR: ome_zarr_write_all(records, path),
-        'read': lambda path=OME_ZARR_DIR: ome_zarr_read_all(path),
-        'random_read': lambda path=OME_ZARR_DIR, indices=None: ome_zarr_random_read(indices, path),
-        'table': ome_pylist,  # run_benchmarks passes as cfg_table; here it's a list of records
+        'write': lambda arrays, path=OME_ZARR_DIR: ome_zarr_write_all_native(arrays, path),
+        'read': lambda path=OME_ZARR_DIR: ome_zarr_read_all_native(path),
+        'random_read': lambda path=OME_ZARR_DIR, indices=None: ome_zarr_random_read_native(indices, path),
+        'table': ome_arrays,  # run_benchmarks passes as cfg_table; here it's a list of numpy arrays
         'random_repeats': RANDOM_READ_REPEATS,
         'version': (
-            f"ome-arrow {VERSIONS.get('ome-arrow', '')}; "
-            f"bioio-ome-zarr {VERSIONS.get('bioio_ome_zarr', '')}; "
+            f"ome-zarr {VERSIONS.get('ome-zarr', '')}; "
             f"zarr {VERSIONS.get('zarr', '')}; "
             f"numcodecs {VERSIONS.get('numcodecs', '')}"
         ),
     })
 else:
-    print("Skipping OME-Zarr format (install bioio-ome-zarr zarr numcodecs to enable).")
+    raise RuntimeError("OME-Zarr format requires ome-zarr, zarr, and numcodecs. Install them to proceed.")
 
 print('Formats:', [cfg['name'] for cfg in format_configs])
 # -
