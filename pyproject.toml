@@ -1,29 +1,41 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = [ "hatchling" ]
+
 [project]
 name = "demo-compare-parquet-vortex-lance-perf"
 version = "0.1.0"
 description = "Benchmarks comparing Parquet, Vortex, and Lance on a wide synthetic dataset."
 readme = "README.md"
 requires-python = ">=3.11"
+classifiers = [
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+]
 dependencies = [
-  "numpy>=1.26.4",
-  "pandas>=2.2.0",
-  "pyarrow>=15.0.0",
-  "jupyterlab>=4.2.5",
-  "vortex-data>=0.56.0",
-  "poethepoet>=0.38.0",
-  "lancedb>=0.25.3",
   "duckdb>=1.1.3",
+  "jupyterlab>=4.2.5",
   "jupytext>=1.18.1",
+  "lancedb>=0.25.3",
+  "matplotlib>=3.10.7",
+  "numcodecs>=0.16.5",
+  "numpy>=1.26.4",
   "ome-arrow>=0.0.4",
   "ome-zarr>=0.12.2",
+  "pandas>=2.2",
+  "poethepoet>=0.38",
+  "pyarrow>=15",
+  "vortex-data>=0.56",
   "zarr>=3.1.5",
-  "numcodecs>=0.16.5",
-  "matplotlib>=3.10.7",
 ]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+[dependency-groups]
+dev = [
+  "poethepoet>=0.38",
+]
 
 [tool.uv]
 package = false
@@ -37,10 +49,9 @@ shell = "uv venv && uv sync && uv run jupyter lab"
 [tool.poe.tasks.run-benchmarks]
 shell = "uv run python src/benchmarks/compare_parquet_vortex_lance.py && uv run python src/benchmarks/compare_parquet_vortex_lance_ome.py && uv run python src/benchmarks/compare_ome_arrow_only.py"
 
-[dependency-groups]
-dev = [
-    "poethepoet>=0.38.0",
-]
-
 [tool.jupytext]
 formats = "ipynb,py:light"
+
+[tool.vulture]
+min_confidence = 90
+paths = [ "src/benchmarks" ]

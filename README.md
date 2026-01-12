@@ -4,14 +4,14 @@ Benchmarking [OME Arrow](https://github.com/WayScience/ome-arrow) through Parque
 
 ## Running benchmarks
 
-1) Create and sync a uv environment (includes parquet, lancedb, vortex-data):
+1. Create and sync a uv environment (includes parquet, lancedb, vortex-data):
 
 ```bash
 uv venv
 uv sync
 ```
 
-2) Launch Jupyter and open `notebooks/compare_parquet_vortex_lance.ipynb`:
+2. Launch Jupyter and open `notebooks/compare_parquet_vortex_lance.ipynb`:
 
 ```bash
 uv run python <benchmark file>
