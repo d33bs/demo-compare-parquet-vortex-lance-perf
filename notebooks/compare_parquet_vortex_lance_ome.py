@@ -112,6 +112,7 @@ if RUN_BENCHMARKS:
         ome_pylist.append(ome_scalar)
     ome_column = pa.array(ome_pylist)
 
+    # Assemble the full table with numeric + string + OME-Arrow payloads.
     column_names = float_names + str_names + ['ome_image']
     # row_id is kept for random access queries; the data columns total 4,051 (floats + strings + OME image).
     columns = [row_ids] + float_columns + str_columns + [ome_column]
@@ -119,7 +120,9 @@ if RUN_BENCHMARKS:
     table = pa.Table.from_arrays(columns, names=column_names)
     print('table rows:', table.num_rows, 'cols:', table.num_columns)
 
+    # DuckDB can ingest Arrow directly; keep the full table for parity.
     duck_table = table
+    # Precompute row ids for random-read benchmarks.
     RANDOM_INDICES = sorted(rng.choice(table.num_rows, size=RANDOM_ROW_COUNT, replace=False).tolist())
 def drop_path(path: Path) -> None:
     if path.is_dir():

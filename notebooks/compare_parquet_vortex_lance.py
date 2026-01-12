@@ -98,13 +98,16 @@ if RUN_BENCHMARKS:
         strings = np.char.add('s', ints.astype(str))
         str_columns.append(pa.array(strings))
 
+    # Assemble the full table with numeric + string payloads alongside row_id.
     column_names = float_names + str_names
     columns = [row_ids] + float_columns + str_columns
     column_names = ['row_id'] + column_names
     table = pa.Table.from_arrays(columns, names=column_names)
     print('table rows:', table.num_rows, 'cols:', table.num_columns)
 
+    # DuckDB can ingest Arrow directly; keep the full table for parity.
     duck_table = table
+    # Precompute row ids for random-read benchmarks.
     RANDOM_INDICES = sorted(rng.choice(table.num_rows, size=RANDOM_ROW_COUNT, replace=False).tolist())
 def drop_path(path: Path) -> None:
     if path.is_dir():
