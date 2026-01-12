@@ -806,15 +806,15 @@ requires-dist = [
     { name = "numpy", specifier = ">=1.26.4" },
     { name = "ome-arrow", specifier = ">=0.0.4" },
     { name = "ome-zarr", specifier = ">=0.12.2" },
-    { name = "pandas", specifier = ">=2.2.0" },
-    { name = "poethepoet", specifier = ">=0.38.0" },
-    { name = "pyarrow", specifier = ">=15.0.0" },
-    { name = "vortex-data", specifier = ">=0.56.0" },
+    { name = "pandas", specifier = ">=2.2" },
+    { name = "poethepoet", specifier = ">=0.38" },
+    { name = "pyarrow", specifier = ">=15" },
+    { name = "vortex-data", specifier = ">=0.56" },
     { name = "zarr", specifier = ">=3.1.5" },
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "poethepoet", specifier = ">=0.38.0" }]
+dev = [{ name = "poethepoet", specifier = ">=0.38" }]
 
 [[package]]
 name = "deprecation"
@@ -3892,17 +3892,18 @@ wheels = [
 
 [[package]]
 name = "vortex-data"
-version = "0.56.0"
+version = "0.58.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pyarrow" },
     { name = "substrait" },
+    { name = "typing-extensions" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/02/a6/13c89dbff9dca6399198cfc55308ca25f6f209ab53f4f970dc1bde9c569f/vortex_data-0.56.0-cp311-abi3-macosx_10_12_x86_64.whl", hash = "sha256:f1d2e4a784779ecba8fd3a5d01ccb93d78251ff4e3215d52d8815e1cfb04773d", size = 11541473, upload-time = "2025-11-17T16:25:50.288Z" },
-    { url = "https://files.pythonhosted.org/packages/9d/ef/486742d2a8b4f1f1ae62cf5a046c36db24048fdf28a3e960daaa7df2f808/vortex_data-0.56.0-cp311-abi3-macosx_11_0_arm64.whl", hash = "sha256:a9215e1f9f0c656ba1ec854efd2deabd27c415405680a69567259cc02f35467f", size = 11026508, upload-time = "2025-11-17T16:25:52.69Z" },
-    { url = "https://files.pythonhosted.org/packages/23/df/cc67aaba87dd9291705afd44880448ccc9753554839d6bc6a385aa1bd601/vortex_data-0.56.0-cp311-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:9aa38a4d00ca01114a77555d963414995fe4ce9e61169b169c4a40babc4cc3a8", size = 10152486, upload-time = "2025-11-17T16:25:55.396Z" },
-    { url = "https://files.pythonhosted.org/packages/f7/24/c3d1e2142d56a2e99fb651779ab8744a50fe30dd47a8e5b593b52ef97074/vortex_data-0.56.0-cp311-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4ab3253c436bfa0bf038e4db2722f5369b8f6b8e415654e1a4b169b5480162fa", size = 10740907, upload-time = "2025-11-17T16:25:57.577Z" },
+    { url = "https://files.pythonhosted.org/packages/af/73/9d17423aafe99c3948948e52ec22a473c2a0d2a2eb6972689c01fec2ef19/vortex_data-0.58.0-cp311-abi3-macosx_10_12_x86_64.whl", hash = "sha256:92f1820ea35930c3ec0feaf8a898ef973a924190dabb9ea474c889de62db6b4a", size = 13943552, upload-time = "2026-01-07T17:27:59.17Z" },
+    { url = "https://files.pythonhosted.org/packages/fb/ba/13e152d0afba6177b24fa18ad111d2d7ad05eb3200570cb41aae2fccf243/vortex_data-0.58.0-cp311-abi3-macosx_11_0_arm64.whl", hash = "sha256:3ee969bf30c96ce4d19a845b655dfd2e293bde1e75f98c9d008b5a63d262d936", size = 13057447, upload-time = "2026-01-07T17:28:01.834Z" },
+    { url = "https://files.pythonhosted.org/packages/c4/2d/36342e1ecc2db25ac737b74ae0e3adeea9146acfc238d2fc2e02ddfd2c8f/vortex_data-0.58.0-cp311-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:74be8388b7b4abe34dd2a2a8edadcf3789cd4811a8d58e9d212abf3800361216", size = 12074895, upload-time = "2026-01-07T17:28:04.158Z" },
+    { url = "https://files.pythonhosted.org/packages/4a/9c/ca7075dde3b86c3a3a4cd24545e1bc4fc7490ceb6c3c5ecaee4ba0e465bb/vortex_data-0.58.0-cp311-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:9ae73348e456c9ad72f8070dba9546186fbd2c00f492a713492fedd504457b3a", size = 12973171, upload-time = "2026-01-07T17:28:07.134Z" },
 ]
 
 [[package]]
