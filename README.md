@@ -1,5 +1,7 @@
 # OME Arrow benchmarks
 
+[![Software DOI badge](https://zenodo.org/badge/DOI/10.5281/zenodo.18234383.svg)](https://doi.org/10.5281/zenodo.18234383)
+
 Benchmarking [OME Arrow](https://github.com/WayScience/ome-arrow) through Parquet, Vortex, LanceDB, and more.
 
 ## Running benchmarks
